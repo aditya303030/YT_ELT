@@ -1,5 +1,5 @@
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from psycopg2.extras import ReadDictCursor
+from psycopg2.extras import RealDictCursor
 
 table = "yt_api"
 
@@ -7,7 +7,7 @@ table = "yt_api"
 def get_conn_cursor():
     hook = PostgresHook(postgres_conn_id="postgres_db_yt_elt", database="elt_db")
     conn = hook.get_conn()
-    cursor = conn.cursor(cursor_factory=ReadDictCursor) # realdictcursor changes how the data is returned when we execute a query
+    cursor = conn.cursor(cursor_factory=RealDictCursor) # realdictcursor changes how the data is returned when we execute a query
     return conn, cursor
     
 

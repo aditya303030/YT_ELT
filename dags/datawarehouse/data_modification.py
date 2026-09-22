@@ -35,7 +35,7 @@ def insert_rows(cursor, conn, schema, row):
                     %(duration)s,
                     %(viewCount)s,
                     %(likeCount)s,
-                    %(commentCount)s,
+                    %(commentCount)s
                 )
                 """, row
             )
@@ -48,20 +48,20 @@ def insert_rows(cursor, conn, schema, row):
                     "Video_Title",
                     "Upload_Date",
                     "Duration",
-                    "Video_type",
+                    "Video_Type",
                     "Video_Views",
                     "Likes_Count",
                     "Comments_Count"
                 )
                 VALUES (
-                    %(video_id)s,
-                    %(title)s,
-                    %(publishedAt)s,
-                    %(duration)s,
+                    %(Video_ID)s,
+                    %(Video_Title)s,
+                    %(Upload_Date)s,
+                    %(Duration)s,
                     %(Video_Type)s,
-                    %(viewCount)s,
-                    %(likeCount)s,
-                    %(commentCount)s
+                    %(Video_Views)s,
+                    %(Likes_Count)s,
+                    %(Comments_Count)s
                 )
                 """, row
             )
@@ -82,45 +82,46 @@ def insert_rows(cursor, conn, schema, row):
 def update_rows(cursor, conn, schema, row):
     try:
         if schema == "staging":
-            # Map the raw API field names used by a staging row.
+            # A staging row comes directly from the JSON file, so its keys use
+            # the original YouTube API names (for example, `title`).
             video_id = "video_id"
-            video_title = "title"
-            upload_date = "publishedAt"
-            duration = "duration"
-            video_views = "viewCount"
-            likes_count = "likeCount"
-            comments_count = "commentCount"
+            update_sql = f"""
+                UPDATE {schema}.{table}
+                SET "Video_Title" = %(title)s,
+                    "Video_Views" = %(viewCount)s,
+                    "Likes_Count" = %(likeCount)s,
+                    "Comments_Count" = %(commentCount)s
+                WHERE "Video_ID" = %(video_id)s
+                  AND "Upload_Date" = %(publishedAt)s
+            """
         
         else:
-            # Map the warehouse field names used by a core row.
+            # A core row was fetched from PostgreSQL, so its dictionary keys
+            # match the quoted database column names.
             video_id = "Video_ID"
-            video_title = "Video_Title"
-            upload_date = "Upload_Date"
-            video_views = "Video_Views"
-            likes_count = "Likes_Count"
-            comments_count = "Comments_Count"
-
-        # Match the existing record by its video ID and upload date, then
-        # overwrite only attributes that can change between API extracts.
-        cursor.execute(
-            f"""
+            update_sql = f"""
                 UPDATE {schema}.{table}
-                SET "Video_Title" = %(video_title)s,
-                    "Video_Views" = %(video_views)s,
-                    "Likes_Count" = %(likes_count)s,
-                    "Comments_Count" = %(comments_count)s
-                WHERE "Video_ID" == %(video_id)s AND "Upload_Date" == %(upload_date)s
-            """, row
-        )
+                SET "Video_Title" = %(Video_Title)s,
+                    "Video_Views" = %(Video_Views)s,
+                    "Likes_Count" = %(Likes_Count)s,
+                    "Comments_Count" = %(Comments_Count)s
+                WHERE "Video_ID" = %(Video_ID)s
+                  AND "Upload_Date" = %(Upload_Date)s
+            """
+
+        # Bind the row dictionary to the SQL placeholders and update only the
+        # mutable values for the matching video record.
+        cursor.execute(update_sql, row)
     
         # Persist the update before logging a successful result.
         conn.commit()
         logger.info(f"Updated row with Video_ID: {row[video_id]}")
 
     except Exception as e:
-        # Record the failure for diagnosis. This function currently logs the
-        # exception but does not re-raise it.
-        logger.error(f"Error updating file with Video_ID: {row[video_id]}")
+        # Include the original database error and re-raise it so Airflow marks
+        # the task as failed instead of reporting a false success.
+        logger.error(f"Error updating row with Video_ID {row[video_id]}: {e}")
+        raise
 
 
 # Deletes all rows whose video IDs are included in `ids_to_delete`.
