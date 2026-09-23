@@ -1,0 +1,27 @@
+# check if there are null values for Video_ID column (there shouldn't be any as this is the primary key)
+# check for duplicates (again should not be duplicates in Video_ID)
+# also make sure the views_count >= likes_count
+# also make sure the views_count >= comments_count
+
+# Checks for basic validations
+checks for yt_api:
+  - missing_count("Video_ID") = 0
+  - duplicate_count("Video_ID") = 0
+
+  # define the result variable of the query and set to 0
+  # the below sql should return 0, which is what is defined in the very next line
+  - likes_count_greater_than_vid_views = 0:
+      name: Check for Like_Count greater than Video_Views
+      likes_count_greater_than_vid_views query: |
+        SELECT COUNT(*)
+        FROM yt_api 
+        WHERE "Likes_Count" > "Video_Views"
+
+  - comments_count_greater_than_vid_views = 0:
+      name: Check for Comments_Count greater than Video_Views
+      comments_count_greater_than_vid_views query: |
+        SELECT COUNT(*)
+        FROM yt_api 
+        WHERE "Comments_Count" > "Video_Views"
+
+
