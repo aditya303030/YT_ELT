@@ -23,5 +23,7 @@ checks for yt_api:
         SELECT COUNT(*)
         FROM yt_api 
         WHERE "Comments_Count" > "Video_Views"
+  
+  
 
 
